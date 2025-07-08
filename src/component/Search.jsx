@@ -1,6 +1,24 @@
 import {useState,useEffect, useLayoutEffect} from "react"
 import spinner from "../assets/spinner.svg"
 
+function getStatColor(statName, value) {
+  if (value < 50) return "#b91c1c";      // rouge foncé
+  if (value < 70) return "#ea580c";      // orange
+  if (value < 90) return "#eab308";      // jaune
+  if (value < 110) return "#22c55e";     // vert clair
+  if (value < 130) return "#3b82f6";     // bleu
+  return "#8b5cf6";                      // violet
+}
+
+function getStatInterpretation(value) {
+  if (value < 50) return "Très faible";
+  if (value < 70) return "Faible";
+  if (value < 90) return "Moyen";
+  if (value < 110) return "Bon";
+  if (value < 130) return "Très bon";
+  return "Excellent";
+}
+
 export default function Search() {
 
     const [nom, setNoms]= useState("")
@@ -80,12 +98,23 @@ let content;
                 ))}
               </td>
               <td className="border border-gray-400 px-4 py-2 text-left">
-                <p>HP : {APIState.data?.stats?.hp}</p>
-                <p>ATK : {APIState.data?.stats?.atk}</p>
-                <p>DEF : {APIState.data?.stats?.def}</p>
-                <p>SPE ATK : {APIState.data?.stats?.spe_atk}</p>
-                <p>SPE DEF : {APIState.data?.stats?.spe_def}</p>
-                <p>VIT : {APIState.data?.stats?.vit}</p>
+                {Object.entries(APIState.data?.stats || {}).map(([key, value]) => (
+                  <div key={key} className="mb-2">
+                    <p className="mb-1">{key.toUpperCase().replace("_", " ")} : {value}</p>
+                    <div className="w-full bg-gray-200 rounded h-4" style={{ maxWidth: "320px" }}>
+                      <div
+                        className={`h-4 rounded flex items-center justify-center px-2 text-xs`}
+                        style={{
+                          width: `${Math.min(value, 100)}%`,
+                          minWidth: "4.5rem",
+                          backgroundColor: getStatColor(key, value),
+                        }}
+                      >
+                        <span className="text-black whitespace-nowrap">{getStatInterpretation(value)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </td>
             </tr>
           </tbody>
