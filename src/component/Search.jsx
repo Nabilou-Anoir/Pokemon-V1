@@ -1,5 +1,6 @@
-import {useState,useEffect, useLayoutEffect} from "react"
+import {useState,useEffect, useLayoutEffect,useRef} from "react"
 import spinner from "../assets/spinner.svg"
+import "./Search.css"
 
 function getStatColor(statName, value) {
   if (value < 50) return "#b91c1c";      // rouge foncé
@@ -19,9 +20,12 @@ function getStatInterpretation(value) {
   return "Excellent";
 }
 
+ 
+
 export default function Search() {
 
-    const [nom, setNoms]= useState("")
+    const [nom, setNoms]= useState("");
+    const refContainer = useRef();
     const [APIState,setApiState]=useState({
 
         loading :false,
@@ -29,6 +33,29 @@ export default function Search() {
         data :undefined, 
     
       }) 
+
+
+      useEffect(() => {
+        if (!refContainer.current) return; // Ne rien faire si le ref n'est pas prêt
+
+        const observer = new IntersectionObserver(entries => {
+          if (entries[0].isIntersecting) {
+            if (refContainer.current) {
+              refContainer.current.classList.add("active");
+              observer.unobserve(refContainer.current);
+            }
+          }
+        });
+
+        observer.observe(refContainer.current);
+
+        return () => {
+          if (refContainer.current) {
+            observer.unobserve(refContainer.current);
+          }
+        };
+      }, [APIState.data]);
+      
 
 function handlerSubmit(e) {
     e.preventDefault();
@@ -60,8 +87,12 @@ function handlerSubmit(e) {
                 data: undefined
             });
         });
-}
+} 
 let content; 
+
+<div ref={refContainer} className="refContainer">
+
+</div>
 
    if(APIState.loading) content = <img src={spinner} alt="icone de chargement"/>
    else if(APIState.error) content = <p> Pokemon introuvable...</p>
@@ -74,17 +105,24 @@ let content;
           alt={APIState.data?.name?.fr}
           className="mx-auto mb-4"
         />
-       <table className="table-auto mx-auto border-collapse border border-gray-400">
+        {APIState.data && (
+  <div ref={refContainer} className="refContainer">
+    <button>Voir le pokemon sh</button>
+  </div>
+)}
+       <table className="table-auto mx-auto border-collapse border border-gray-400 m-20">
           <thead>
             <tr>
               <th className="border border-gray-400 px-4 py-2">Type</th>
               <th className="border border-gray-400 px-4 py-2">Talents</th>
               <th className="border border-gray-400 px-4 py-2">Statistiques</th>
+              <th className="border border-gray-400 px-4 py-2">Faiblesse</th>
+              
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="border border-gray-400 px-4 py-2">
+              <td className="border border-gray-400 px-4 py-2 ">
                 {APIState.data?.types?.map((type, index) => (
                   <div key={index} className="mb-2">
                     <p>{type.name}</p>
@@ -116,6 +154,20 @@ let content;
                   </div>
                 ))}
               </td>
+              <td className="border border-gray-400 px-4 py-10">
+              {APIState.data?.resistances?.map((resistance, index) => (
+              <div key={index} className="mb-1">
+              <p>
+              {resistance.name} : 
+              <span className={ resistance.multiplier > 1 ? "text-red-600" 
+              : resistance.multiplier === 0 ? "text-blue-600"
+              : resistance.multiplier < 1 ? "text-green-700" : ""
+              } > {resistance.multiplier}
+            </span>
+          </p>
+       </div>
+))}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -125,6 +177,7 @@ let content;
    
   return (
     <div>
+      
       <form onSubmit={handlerSubmit} className="flex flex-col gap-4 w-full max-w-md mx-auto">
          <label  className ="text-center text-6xl font-bold text-neutral-600 font-serif" htmlFor="recherche">Pokedex</label>
           <input id="recherche" 
@@ -135,6 +188,7 @@ let content;
           <button className="w-full max-w-md 2xl bg-red-600 text-blue-50 rounded">Rercher</button>
           {content}
         </form>
+
     </div>
   )
 } 
