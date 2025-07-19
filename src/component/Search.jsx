@@ -1,6 +1,10 @@
 import {useState,useEffect, useLayoutEffect,useRef} from "react"
 import spinner from "../assets/spinner.svg"
 import "./Search.css"
+import metha from "..//assets/metha.png"
+import { createPortal} from "react-dom"
+import ModalContent from "./ModalContent"
+
 
 function getStatColor(statName, value) {
   if (value < 50) return "#b91c1c";      // rouge foncé
@@ -26,6 +30,7 @@ export default function Search() {
 
     const [nom, setNoms]= useState("");
     const refContainer = useRef();
+    const [showModal,setShowModal]=useState(false)
     const [APIState,setApiState]=useState({
 
         loading :false,
@@ -95,7 +100,7 @@ let content;
 </div>
 
    if(APIState.loading) content = <img src={spinner} alt="icone de chargement"/>
-   else if(APIState.error) content = <p> Pokemon introuvable...</p>
+   else if(APIState.error) content = <p> Pokemon introuvable... <img src={metha} alt="Methamorph" /></p>
    else if (!APIState.loading && !APIState.error && APIState.data) {
     content = (
       <div className="text-center">
@@ -107,7 +112,10 @@ let content;
         />
         {APIState.data && (
   <div ref={refContainer} className="refContainer">
-    <button>Voir le pokemon sh</button>
+        <button type="button" onClick={()=>setShowModal(true)}>
+            Voir le pokemon shiny
+        </button>
+        {showModal && createPortal(<ModalContent closeModal={()=>setShowModal(false)} nom ={nom}/>, document.body)}
   </div>
 )}
        <table className="table-auto mx-auto border-collapse border border-gray-400 m-20">
@@ -159,10 +167,33 @@ let content;
               <div key={index} className="mb-1">
               <p>
               {resistance.name} : 
-              <span className={ resistance.multiplier > 1 ? "text-red-600" 
+              <span className={ resistance.multiplier > 2 ? "text-white bg-red-600 rounded p-1 m-1"
+              : resistance.multiplier > 1 ? "text-orange-400" 
               : resistance.multiplier === 0 ? "text-blue-600"
-              : resistance.multiplier < 1 ? "text-green-700" : ""
+              : resistance.multiplier < 1 ? "text-green-700" 
+              
+              : ""
               } > {resistance.multiplier}
+              {/* {APIState.data?.resistances?.map((resistance, index) => {
+  const colorClass = resistance.multiplier > 2
+    ? "text-white bg-red-600 rounded p-1 m-1"
+    : resistance.multiplier > 1
+    ? "text-orange-400"
+    : resistance.multiplier === 0
+    ? "text-blue-600"
+    : resistance.multiplier < 1
+    ? "text-green-700"
+    : "";
+
+  return (
+    <div key={index} className="mb-1">
+      <p>
+        <span className={colorClass}>{resistance.name}</span> : 
+        <span className={colorClass}> {resistance.multiplier}</span>
+      </p>
+    </div>
+  );
+})} */}
             </span>
           </p>
        </div>
@@ -185,7 +216,7 @@ let content;
           onChange={e => setNoms(e.target.value)} 
           className="w-full max-w-md bg-slate-200 px-5 border-gray-700 rounded" 
           type="text" />
-          <button className="w-full max-w-md 2xl bg-red-600 text-blue-50 rounded">Rercher</button>
+          <button className="w-full max-w-md 2xl bg-red-600 text-blue-50 rounded">Recherche</button>
           {content}
         </form>
 
