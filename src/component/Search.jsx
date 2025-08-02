@@ -5,6 +5,7 @@ import metha from "..//assets/metha.png"
 import { createPortal} from "react-dom"
 import ModalContent from "./ModalContent"
 
+const cache = {};
 
 function getStatColor(statName, value) {
   if (value < 50) return "#b91c1c";      // rouge foncé
@@ -60,38 +61,45 @@ export default function Search() {
           }
         };
       }, [APIState.data]);
+
       
 
 function handlerSubmit(e) {
     e.preventDefault();
-    if (!nom.trim()) return; // Ne rien faire si le champ est vide
-    //La méthode .trim() est utilisée pour s’assurer que si un utilisateur 
-    // entre "  Pikachu  ", la requête enverra "pikachu" (sans espaces), ce qui évite les erreurs dues à des espaces non désirés.
-    
-    setApiState({...APIState, loading: true, error: false});
-    
-    fetch(`https://tyradex.app/api/v1/pokemon/${nom.toLowerCase().trim()}`)
-        .then(res => {
-            if (!res.ok) {
-                throw new Error('Pokémon non trouvé');
-            }
-            return res.json();
-        })
-        .then(data => {
-            if (data && data.pokedex_id) {
-                setApiState({loading: false, error: false, data: data});
-            } else {
-                throw new Error('Données de Pokémon invalides');
-            }
-        })
-        .catch((error) => {
-            console.error('Erreur lors de la recherche:', error);
-            setApiState({
-                loading: false,
-                error: true,
-                data: undefined
-            });
+    const pokemonName = nom.toLowerCase().trim();
+    if (!pokemonName) return;
+
+    // Vérifier si le résultat est déjà en cache
+    if (cache[pokemonName]) {
+      setApiState({ loading: false, error: false, data: cache[pokemonName] });
+      return;
+    }
+
+    setApiState({ ...APIState, loading: true, error: false });
+
+    fetch(`https://tyradex.app/api/v1/pokemon/${pokemonName}`)
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Pokémon non trouvé');
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (data && data.pokedex_id) {
+          cache[pokemonName] = data; // stocker en cache
+          setApiState({ loading: false, error: false, data });
+        } else {
+          throw new Error('Données de Pokémon invalides');
+        }
+      })
+      .catch((error) => {
+        console.error('Erreur lors de la recherche:', error);
+        setApiState({
+          loading: false,
+          error: true,
+          data: undefined
         });
+      });
 } 
 let content; 
 
@@ -112,10 +120,10 @@ let content;
         />
         {APIState.data && (
   <div ref={refContainer} className="refContainer">
-        <button type="button" onClick={()=>setShowModal(true)}>
+        <button className=" hover:bg-slate-300" type="button" onClick={()=>setShowModal(true)}>
             Voir le pokemon shiny
         </button>
-        {showModal && createPortal(<ModalContent closeModal={()=>setShowModal(false)} nom ={nom}/>, document.body)}
+        {showModal && createPortal(<ModalContent closeModal={()=>setShowModal(false)} nom={nom} />, document.body)}
   </div>
 )}
        <table className="table-auto mx-auto border-collapse border border-gray-400 m-20">
@@ -210,13 +218,13 @@ let content;
     <div>
       
       <form onSubmit={handlerSubmit} className="flex flex-col gap-4 w-full max-w-md mx-auto">
-         <label  className ="text-center text-6xl font-bold text-neutral-600 font-serif" htmlFor="recherche">Pokedex</label>
+         <label  className ="text-center text-6xl font-bold text-neutral-600 font-serif" htmlFor="recherche"> Pokedex</label>
           <input id="recherche" 
           value={nom}
           onChange={e => setNoms(e.target.value)} 
           className="w-full max-w-md bg-slate-200 px-5 border-gray-700 rounded" 
           type="text" />
-          <button className="w-full max-w-md 2xl bg-red-600 text-blue-50 rounded">Recherche</button>
+          <button className="w-full max-w-md 2xl bg-red-600 text-blue-50 rounded hover:bg-slate-300">Recherche</button>
           {content}
         </form>
 
