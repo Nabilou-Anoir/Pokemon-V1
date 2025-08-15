@@ -1,5 +1,7 @@
+import PokemonByGeneration from "../PokemonByGeneration"
+
 export default function Accueil() {
   return (
-    <div>Accueil</div>
+    <PokemonByGeneration/>
   )
 }
