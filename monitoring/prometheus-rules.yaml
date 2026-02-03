@@ -1,0 +1,46 @@
+# ============================================
+# Règles d'alerte Prometheus pour Pokemon App
+# ============================================
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pokemon-app-alerts
+  namespace: pokemon-app
+  labels:
+    app: pokemon-app
+    release: prometheus
+spec:
+  groups:
+    - name: pokemon-app.rules
+      rules:
+        # Alerte si le pod est down
+        - alert: PokemonAppDown
+          expr: up{job="pokemon-app-service"} == 0
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Pokemon App est down"
+            description: "L'application Pokemon n'est plus accessible depuis {{ $labels.instance }}"
+        
+        # Alerte si trop de pods en erreur
+        - alert: PokemonAppHighPodRestarts
+          expr: increase(kube_pod_container_status_restarts_total{namespace="pokemon-app"}[1h]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pokemon App - Redémarrages fréquents"
+            description: "Le pod {{ $labels.pod }} redémarre fréquemment (plus de 3 fois en 1h)"
+        
+        # Alerte si utilisation CPU élevée
+        - alert: PokemonAppHighCPU
+          expr: |
+            (sum(rate(container_cpu_usage_seconds_total{namespace="pokemon-app"}[5m])) 
+            / sum(kube_pod_container_resource_limits{namespace="pokemon-app", resource="cpu"})) > 0.8
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pokemon App - CPU élevé"
+            description: "L'utilisation CPU dépasse 80%"

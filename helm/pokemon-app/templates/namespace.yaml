@@ -1,0 +1,8 @@
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ .Values.namespace }}
+  labels:
+    app: pokemon-app
+    {{- include "pokemon-app.labels" . | nindent 4 }}

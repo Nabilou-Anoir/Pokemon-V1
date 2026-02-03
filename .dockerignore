@@ -1,0 +1,47 @@
+# Dépendances
+node_modules
+
+# Build local (sera recréé dans le container)
+dist
+build
+
+# Fichiers de développement
+.git
+.gitignore
+*.md
+!README.md
+
+# IDE et éditeurs
+.idea
+.vscode
+*.swp
+*.swo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environnement local
+.env
+.env.local
+.env.*.local
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# Kubernetes
+k8s/
+
+# CI/CD
+Jenkinsfile
+.github/
+
+# Tests
+coverage/
+*.test.js
+*.spec.js
+
+# PDFs et documents
+*.pdf

@@ -1,0 +1,61 @@
+# ============================================
+# Values par défaut pour le Helm Chart Pokemon App
+# ============================================
+
+# Configuration de l'image Docker
+image:
+  # ⚠️ IMPORTANT: Remplacez par votre username Docker Hub
+  repository: your-dockerhub-username/pokemon-app
+  tag: latest
+  pullPolicy: Always
+
+# Nombre de réplicas
+replicaCount: 2
+
+# Configuration du Service
+service:
+  type: NodePort
+  port: 80
+  nodePort: 30080
+
+# Configuration de l'Ingress
+ingress:
+  enabled: true
+  className: nginx
+  host: pokemon.local
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
+# Ressources CPU/Memory
+resources:
+  requests:
+    memory: "64Mi"
+    cpu: "100m"
+  limits:
+    memory: "128Mi"
+    cpu: "250m"
+
+# Probes de santé
+probes:
+  liveness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 15
+  readiness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+# Monitoring Prometheus
+monitoring:
+  enabled: true
+  # ServiceMonitor pour Prometheus
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+    path: /metrics
+
+# Namespace
+namespace: pokemon-app

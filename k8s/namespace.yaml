@@ -1,0 +1,10 @@
+# ============================================
+# Namespace pour l'application Pokemon
+# ============================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pokemon-app
+  labels:
+    app: pokemon-app
+    environment: production

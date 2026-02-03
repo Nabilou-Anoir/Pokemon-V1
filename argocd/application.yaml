@@ -1,0 +1,57 @@
+# ============================================
+# ArgoCD Application pour déploiement GitOps
+# ============================================
+# Cette configuration dit à ArgoCD de surveiller le repo GitHub
+# et de déployer automatiquement les changements
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pokemon-app
+  namespace: argocd
+  # Finalizer pour éviter la suppression accidentelle des ressources
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  # Projet ArgoCD (default si pas de projet personnalisé)
+  project: default
+  
+  # Source: Où ArgoCD doit récupérer les manifests
+  source:
+    # ⚠️ IMPORTANT: Remplacez par l'URL de votre repo GitHub
+    repoURL: https://github.com/your-username/Pokemon-V1.git
+    targetRevision: main
+    path: helm/pokemon-app
+    
+    # Configuration Helm
+    helm:
+      # Vous pouvez override les values ici
+      valueFiles:
+        - values.yaml
+      # Ou directement avec des paramètres
+      parameters:
+        - name: image.tag
+          value: latest
+  
+  # Destination: Où déployer dans Kubernetes
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: pokemon-app
+  
+  # Politique de synchronisation
+  syncPolicy:
+    automated:
+      # Auto-prune: Supprimer les ressources qui ne sont plus dans le repo
+      prune: true
+      # Self-heal: Recréer les ressources si elles sont modifiées manuellement
+      selfHeal: true
+      # Autoriser les namespaces vides
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

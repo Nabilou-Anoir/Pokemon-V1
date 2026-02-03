@@ -1,0 +1,49 @@
+# ============================================
+# Service pour exposer l'application Pokemon
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: pokemon-app-service
+  namespace: pokemon-app
+  labels:
+    app: pokemon-app
+spec:
+  # Type NodePort pour accès via Minikube
+  # Utilisez 'LoadBalancer' pour les cloud providers (AWS, GCP, Azure)
+  type: NodePort
+  
+  selector:
+    app: pokemon-app
+  
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80          # Port du service
+      targetPort: 80    # Port du conteneur
+      nodePort: 30080   # Port accessible sur le node (30000-32767)
+
+---
+# ============================================
+# Ingress (optionnel) pour accès via nom de domaine
+# ============================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: pokemon-app-ingress
+  namespace: pokemon-app
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: pokemon.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: pokemon-app-service
+                port:
+                  number: 80

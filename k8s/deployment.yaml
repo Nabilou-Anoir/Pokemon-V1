@@ -1,0 +1,75 @@
+# ============================================
+# Deployment pour l'application Pokemon
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pokemon-app
+  namespace: pokemon-app
+  labels:
+    app: pokemon-app
+spec:
+  # Nombre de réplicas pour haute disponibilité
+  replicas: 2
+  
+  selector:
+    matchLabels:
+      app: pokemon-app
+  
+  # Stratégie de mise à jour (rolling update)
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  
+  template:
+    metadata:
+      labels:
+        app: pokemon-app
+    spec:
+      containers:
+        - name: pokemon-app
+          # ⚠️ IMPORTANT: Remplacez 'your-dockerhub-username' par votre username Docker Hub
+          image: your-dockerhub-username/pokemon-app:latest
+          
+          ports:
+            - containerPort: 80
+              protocol: TCP
+          
+          # Ressources allouées au conteneur
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+          
+          # Probe de démarrage - vérifie que l'app démarre correctement
+          startupProbe:
+            httpGet:
+              path: /
+              port: 80
+            failureThreshold: 30
+            periodSeconds: 10
+          
+          # Probe de vie - redémarre le pod si l'app ne répond plus
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          # Probe de disponibilité - retire le pod du service s'il n'est pas prêt
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
