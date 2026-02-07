@@ -1,13 +1,15 @@
 pipeline {
     agent any
-    
+
     environment {
-        // ⚠️ IMPORTANT: Remplacez 'your-dockerhub-username' par votre username Docker Hub
+        // Docker Hub
         DOCKER_HUB_USERNAME = 'zouboupe'
         DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/pokemon-app"
         DOCKER_TAG = "${BUILD_NUMBER}"
-        // Credentials Docker Hub configurées dans Jenkins (ID: 'dockerhub-credentials')
-        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials'
+
+        // Jenkins Credentials (Secret text ID)
+        DOCKER_CREDENTIALS_ID = 'dockerhub-token'
+
         // Namespace Kubernetes
         K8S_NAMESPACE = 'pokemon-app'
     }
@@ -40,8 +42,6 @@ pipeline {
             }
         }
 
-
-
         // ============================================
         // Stage 4: Construction de l'image Docker
         // ============================================
@@ -60,8 +60,10 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 echo "📤 Publication de l'image sur Docker Hub..."
-                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
-                    sh 'echo $DOCKER_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin'
+                withCredentials([string(credentialsId: DOCKER_CREDENTIALS_ID, variable: 'DOCKER_TOKEN')]) {
+                    // Double quotes: interpolation de ${DOCKER_HUB_USERNAME}
+                    // \$DOCKER_TOKEN: passe la variable au shell
+                    sh "echo \$DOCKER_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin"
                     sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     sh "docker push ${DOCKER_IMAGE}:latest"
                 }
@@ -79,7 +81,7 @@ pipeline {
                     # Mise à jour de l'image dans values.yaml
                     sed -i 's|repository:.*|repository: ${DOCKER_IMAGE}|g' helm/pokemon-app/values.yaml
                     sed -i 's|tag:.*|tag: "${DOCKER_TAG}"|g' helm/pokemon-app/values.yaml
-                    
+
                     # Vérifier si le release existe
                     if helm status pokemon-app -n ${K8S_NAMESPACE} > /dev/null 2>&1; then
                         echo "📦 Mise à jour du déploiement existant..."
