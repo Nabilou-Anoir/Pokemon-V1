@@ -34,7 +34,7 @@ spec:
       tty: true
 
     - name: kubectl
-      image: bitnami/kubectl:1.35.0
+      image: alpine/kubectl:1.35.0
       command: ["sh", "-c", "cat"]
       tty: true
 """
