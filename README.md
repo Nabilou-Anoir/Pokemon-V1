@@ -1,12 +1,15 @@
-# 🎮 Pokemon-V1 - Application Pokédex avec CI/CD (Jenkins + K8s + Helm)
+# 🎮 Pokemon-V1 — Pokédex React avec CI/CD (Jenkins + Docker + Kubernetes + Helm) + Monitoring
 
-Application web React permettant de rechercher et explorer les Pokémon, avec une chaîne CI/CD basée sur **Docker, Jenkins, Kubernetes, Helm** (Minikube).
+Application web React permettant de rechercher et explorer les Pokémon, avec une chaîne CI/CD **reproductible** basée sur **Docker, Jenkins, Kubernetes (Minikube) et Helm**.  
+Le chart Helm inclut un **ServiceMonitor**, donc on installe aussi **Prometheus Operator (kube-prometheus-stack)** pour que le déploiement fonctionne.
 
 ![React](https://img.shields.io/badge/React-18.2.0-blue)
 ![Docker](https://img.shields.io/badge/Docker-Ready-blue)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-Ready-blue)
 ![Helm](https://img.shields.io/badge/Helm-v3-purple)
 ![Jenkins](https://img.shields.io/badge/Jenkins-CI%2FCD-red)
+![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-red)
+![Grafana](https://img.shields.io/badge/Grafana-Dashboards-orange)
 
 ---
 
@@ -15,23 +18,26 @@ Application web React permettant de rechercher et explorer les Pokémon, avec un
 1. [Fonctionnalités](#-fonctionnalités)
 2. [Architecture](#-architecture)
 3. [Prérequis VM Ubuntu](#-prérequis-vm-ubuntu)
-4. [Installation de l'environnement](#-installation-de-lenvironnement)
-5. [Docker](#-docker)
-6. [Jenkins CI/CD (Procédure complète A → Z)](#-jenkins-cicd-procédure-complète-a--z)
-7. [Kubernetes avec Helm (manuel)](#-kubernetes-avec-helm-manuel)
-8. [Monitoring (optionnel mais recommandé)](#-monitoring-optionnel-mais-recommandé)
-9. [Structure du projet](#-structure-du-projet)
-10. [Checklist du cahier des charges](#-checklist-du-cahier-des-charges)
-11. [APIs utilisées](#-apis-utilisées)
+4. [Installation de l’environnement](#-installation-de-lenvironnement)
+5. [Préparation Docker Hub](#-préparation-docker-hub)
+6. [Installation de Jenkins dans Kubernetes](#-installation-de-jenkins-dans-kubernetes)
+7. [Accéder à l’UI Jenkins](#-accéder-à-lui-jenkins)
+8. [Configurer Jenkins (plugins + credentials)](#-configurer-jenkins-plugins--credentials)
+9. [Pipeline Jenkins : procédure complète (A → Z)](#-pipeline-jenkins--procédure-complète-a--z)
+10. [Déploiement & accès à l’application](#-déploiement--accès-à-lapplication)
+11. [Monitoring Prometheus + Grafana (nécessaire pour ServiceMonitor)](#-monitoring-prometheus--grafana-nécessaire-pour-servicemonitor)
+12. [Structure du projet](#-structure-du-projet)
+13. [Checklist](#-checklist)
+14. [APIs utilisées](#-apis-utilisées)
 
 ---
 
 ## ✨ Fonctionnalités
 
-- 🔍 **Recherche de Pokémon** - Recherche par nom avec détails complets
-- 📚 **Pokédex par génération** - Navigation par génération (I à IX)
-- 📖 **Pokédex complet** - Liste paginée de tous les Pokémon
-- ✨ **Sprites shiny** - Visualisation des formes shiny
+- 🔍 **Recherche de Pokémon** (nom + détails)
+- 📚 **Pokédex par génération** (I → IX)
+- 📖 **Liste paginée** des Pokémon
+- ✨ **Sprites shiny**
 
 ---
 
@@ -44,39 +50,48 @@ Application web React permettant de rechercher et explorer les Pokémon, avec un
 ▼
 ┌─────────────┐
 │ Kubernetes  │
-│ (Minikube)  │
+│  Minikube   │
 └─────────────┘
 │
 ▼
 ┌─────────────┐
-│   Service   │
-│ (NodePort)  │
+│  Service    │
+│  NodePort   │
+└─────────────┘
+│
+▼
+┌─────────────┐
+│ Navigateur  │
 └─────────────┘
 
 ---
 
 ## 🖥 Prérequis VM Ubuntu
 
-Votre VM Ubuntu doit avoir au minimum :
-- **RAM** : 4 Go (8 Go recommandé)
-- **CPU** : 2 cores
-- **Disque** : 20 Go
-- **Ubuntu** : 20.04, 22.04 ou 24.04
+Recommandé (sinon la VM peut redémarrer pendant les builds) :
+- **RAM** : 8 Go (minimum 4 Go)
+- **CPU** : 2 cœurs (4 conseillé)
+- **Disque** : 20 Go+
+- **Ubuntu** : 20.04 / 22.04 / 24.04
 
 ---
 
-## 🔧 Installation de l'environnement
+## 🔧 Installation de l’environnement
 
-### Étape 1 : Mise à jour du système
+### 1) Mise à jour système
 
 ```bash
 sudo apt update && sudo apt upgrade -y
 
-Étape 2 : Installer Docker
+2) Installer Docker
 
 sudo apt install -y apt-transport-https ca-certificates curl software-properties-common
+
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+| sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io
 
@@ -85,7 +100,7 @@ newgrp docker
 
 docker --version
 
-Étape 3 : Installer Minikube
+3) Installer Minikube
 
 curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
@@ -93,14 +108,18 @@ sudo install minikube-linux-amd64 /usr/local/bin/minikube
 minikube start --driver=docker --memory=4096 --cpus=2
 minikube status
 
-Étape 4 : Installer kubectl
+Astuce : si vous avez 8 Go RAM, vous pouvez monter la mémoire :
+
+minikube start --driver=docker --memory=6144 --cpus=2
+
+4) Installer kubectl
 
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 kubectl version --client
 
-Étape 5 : Installer Helm
+5) Installer Helm
 
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 helm version
@@ -108,47 +127,23 @@ helm version
 
 ⸻
 
-🐳 Docker
+🔐 Préparation Docker Hub
 
-Construire l’image localement (test)
+Le pipeline Jenkins push l’image sur Docker Hub.
+Il faut donc :
+	1.	un compte Docker Hub
+	2.	un Access Token (recommandé plutôt que mot de passe)
 
-git clone https://github.com/Nabilou-Anoir/Pokemon-V1.git
-cd Pokemon-V1
+Créer un token Docker Hub
 
-docker build -t pokemon-app:latest .
-
-docker run -d -p 8080:80 --name pokemon-test pokemon-app:latest
-curl -I http://localhost:8080 | head -n 10
-
-docker stop pokemon-test && docker rm pokemon-test
-
-Pousser sur Docker Hub (manuel)
-
-docker login
-docker tag pokemon-app:latest zouboupe/pokemon-app:latest
-docker push zouboupe/pokemon-app:latest
-
+Docker Hub → Account Settings → Security → New Access Token
+Copier le token, on l’ajoutera dans Jenkins ensuite.
 
 ⸻
 
-🔄 Jenkins CI/CD (Procédure complète A → Z)
+🧰 Installation de Jenkins dans Kubernetes
 
-Objectif :
-	•	Jenkins est installé dans Minikube (Helm)
-	•	Jenkins exécute un pipeline Kubernetes (agent Pod)
-	•	Build + Push de l’image Docker sur Docker Hub
-	•	Déploiement / Mise à jour sur Kubernetes via Helm
-
-A) Démarrer Minikube et vérifier l’état
-
-minikube start --driver=docker --memory=4096 --cpus=2
-minikube status
-kubectl get nodes
-
-
-⸻
-
-B) Installer Jenkins dans Minikube (Helm)
+On installe Jenkins dans Minikube via Helm.
 
 helm repo add jenkins https://charts.jenkins.io
 helm repo update
@@ -159,7 +154,9 @@ helm install jenkins jenkins/jenkins \
   --namespace jenkins \
   --set controller.serviceType=NodePort
 
-Donner les droits au service account Jenkins pour déployer dans le cluster :
+Donner les droits nécessaires à Jenkins
+
+Jenkins doit pouvoir faire kubectl / helm dans le cluster.
 
 kubectl create clusterrolebinding jenkins-admin-binding \
   --clusterrole=cluster-admin \
@@ -168,26 +165,24 @@ kubectl create clusterrolebinding jenkins-admin-binding \
 
 ⸻
 
-C) Récupérer le mot de passe admin Jenkins
+🌐 Accéder à l’UI Jenkins
+
+1) Récupérer le mot de passe admin
 
 kubectl exec --namespace jenkins -it svc/jenkins -c jenkins -- \
   /bin/cat /run/secrets/additional/chart-admin-password && echo
 
-
-⸻
-
-D) Accéder à l’UI Jenkins
-
-URL Jenkins :
+2) Obtenir l’URL Jenkins
 
 minikube service jenkins -n jenkins --url
 
-Ouvrir l’URL dans le navigateur, puis se connecter avec :
+Ouvrir l’URL dans le navigateur :
 	•	username : admin
-	•	password : (celui récupéré étape C)
+	•	password : celui récupéré avec la commande précédente
 
-Si un redémarrage de VM fait tomber Jenkins :
-Relancer le pod Jenkins puis récupérer à nouveau l’URL.
+3) Si Jenkins ne répond plus (après redémarrage VM)
+
+Redémarrer le pod Jenkins :
 
 kubectl get pods -n jenkins -o wide
 kubectl delete pod -n jenkins jenkins-0
@@ -197,9 +192,21 @@ minikube service jenkins -n jenkins --url
 
 ⸻
 
-E) Ajouter le token Docker Hub dans Jenkins
-	1.	Docker Hub → Settings → Security → New Access Token
-	2.	Jenkins → Manage Jenkins → Credentials → System → Global credentials → Add Credentials
+🧩 Configurer Jenkins (plugins + credentials)
+
+Plugins à installer (si non déjà installés)
+
+Dans Jenkins : Manage Jenkins → Plugins
+Installer au minimum :
+	•	Pipeline
+	•	Git
+	•	Kubernetes
+	•	Docker Pipeline (utile)
+	•	Credentials Binding (souvent déjà présent)
+
+Ajouter le token Docker Hub
+
+Jenkins → Manage Jenkins → Credentials → System → Global credentials → Add Credentials
 	•	Kind : Secret text
 	•	Secret : (Docker Hub Access Token)
 	•	ID : dockerhub-token
@@ -207,25 +214,32 @@ E) Ajouter le token Docker Hub dans Jenkins
 
 ⸻
 
-F) Vérifier le Jenkinsfile du projet (important)
+✅ Pipeline Jenkins : procédure complète (A → Z)
 
-Le pipeline utilise un agent Kubernetes avec containers node, docker, helm, kubectl, jnlp.
-Le container kubectl doit utiliser une image existante :
+A) Cloner le projet (sur la VM)
 
-- name: kubectl
-  image: alpine/kubectl:1.35.0
+git clone https://github.com/Nabilou-Anoir/Pokemon-V1.git
+cd Pokemon-V1
 
-Vérification directe depuis la VM :
+B) Vérifier le Jenkinsfile (image kubectl)
+
+Le pipeline utilise un agent Kubernetes avec un container kubectl.
+L’image doit exister : on utilise alpine/kubectl:1.35.0.
+
+Vérification depuis GitHub :
 
 curl -sL https://raw.githubusercontent.com/Nabilou-Anoir/Pokemon-V1/main/Jenkinsfile | grep -n "image: .*kubectl"
 
+Résultat attendu :
 
-⸻
+image: alpine/kubectl:1.35.0
 
-G) Monitoring (si le chart contient un ServiceMonitor)
+Pourquoi : sinon l’agent Jenkins ne démarre pas si l’image n’existe pas.
 
-Le chart Helm contient un servicemonitor.yaml.
-Dans ce cas, il faut installer les CRDs Prometheus Operator (kube-prometheus-stack) avant le déploiement Helm.
+C) (Obligatoire si ServiceMonitor) Installer Prometheus Operator / CRDs
+
+Notre chart Helm inclut un ServiceMonitor (monitoring.coreos.com/v1).
+Donc on doit installer les CRDs via kube-prometheus-stack avant de déployer l’app.
 
 helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 helm repo update
@@ -234,17 +248,12 @@ kubectl create namespace monitoring || true
 
 helm install kube-prom-stack prometheus-community/kube-prometheus-stack -n monitoring
 
-Vérifier que la CRD ServiceMonitor existe :
+Vérifier la CRD :
 
 kubectl get crd | grep servicemonitors.monitoring.coreos.com
 
-
-⸻
-
-H) Créer le job Jenkins Pipeline
-
-Dans Jenkins :
-	1.	New Item
+D) Créer le job Pipeline dans Jenkins
+	1.	Jenkins → New Item
 	2.	Nom : pokemon-v1
 	3.	Type : Pipeline
 	4.	Pipeline → Definition : Pipeline script from SCM
@@ -254,81 +263,62 @@ Dans Jenkins :
 	8.	Script Path : Jenkinsfile
 	9.	Save
 
-⸻
+E) Lancer le build
 
-I) Lancer le pipeline
+Dans pokemon-v1 → Build Now
 
-Dans le job pokemon-v1 :
-	•	Cliquez sur Build Now
-
-Résultat attendu :
-	•	Image Docker build + push :
-	•	zouboupe/pokemon-app:<BUILD_NUMBER>
-	•	zouboupe/pokemon-app:latest
-	•	Déploiement Helm dans le namespace : pokemon-app
-	•	Service NodePort : pokemon-app-service
+Ce que fait le pipeline (résumé clair) :
+	1.	Checkout GitHub
+	2.	npm ci + build front
+	3.	docker build → image taggée avec le numéro du build
+	4.	docker login (token) puis push Docker Hub
+	5.	helm install ou helm upgrade sur le namespace pokemon-app
+	6.	Vérification kubectl rollout status
 
 ⸻
 
-J) Vérifier le déploiement et accéder à l’application
+🚀 Déploiement & accès à l’application
 
-kubectl get all -n pokemon-app
-kubectl get svc -n pokemon-app
+1) Vérifier l’état Kubernetes
 
-URL application :
+kubectl get pods -n pokemon-app -o wide
+kubectl get svc  -n pokemon-app
+
+2) Obtenir l’URL du service
 
 minikube service pokemon-app-service -n pokemon-app --url
 
-Test :
+3) Tester en ligne de commande
 
 curl -I $(minikube service pokemon-app-service -n pokemon-app --url) | head -n 10
 
+Attendu : HTTP/1.1 200 OK
 
 ⸻
 
-K) Nettoyer les pods “agents Jenkins” (optionnel)
+📊 Monitoring Prometheus + Grafana (nécessaire pour ServiceMonitor)
 
-kubectl delete pod -n jenkins -l jenkins=pokemon-pipeline --ignore-not-found=true
+Cette partie est déjà requise pour que le chart Helm fonctionne si ServiceMonitor est déployé.
 
+Vérifier les pods Prometheus stack
 
-⸻
-
-☸️ Kubernetes avec Helm (manuel)
-
-Cette partie permet de déployer sans Jenkins.
-Dans la pratique, Jenkins fait déjà le helm install/upgrade.
-
-Déployer (manuel)
-
-kubectl create namespace pokemon-app || true
-
-helm upgrade --install pokemon-app ./helm/pokemon-app \
-  --namespace pokemon-app \
-  --set image.repository=zouboupe/pokemon-app \
-  --set image.tag=latest
-
-Vérifier :
-
-kubectl get pods -n pokemon-app
-kubectl get svc -n pokemon-app
-minikube service pokemon-app-service -n pokemon-app --url
-
-
-⸻
-
-📊 Monitoring (optionnel mais recommandé)
+kubectl -n monitoring get pods -l release=kube-prom-stack
 
 Accéder à Grafana
 
-Mot de passe admin Grafana :
+Récupérer le mot de passe :
 
-kubectl get secret -n monitoring kube-prom-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d; echo
+kubectl --namespace monitoring get secrets kube-prom-stack-grafana \
+  -o jsonpath="{.data.admin-password}" | base64 -d ; echo
 
-Port-forward Grafana :
+Port-forward :
 
 kubectl port-forward -n monitoring svc/kube-prom-stack-grafana 3000:80
 
-Accès : http://localhost:3000 (user: admin / password: commande ci-dessus)
+Accès :
+	•	URL : http://localhost:3000
+	•	user : admin
+	•	password : commande ci-dessus
 
 ⸻
 
@@ -336,39 +326,42 @@ Accès : http://localhost:3000 (user: admin / password: commande ci-dessus)
 
 Pokemon-V1/
 ├── src/                          # Code source React
-├── helm/                         # Helm Chart
+├── helm/
 │   └── pokemon-app/
 │       ├── Chart.yaml
 │       ├── values.yaml
 │       └── templates/
 │           ├── deployment.yaml
 │           ├── service.yaml
-│           ├── servicemonitor.yaml
-├── Dockerfile                    # Image Docker
-├── Jenkinsfile                   # Pipeline CI/CD
-├── nginx.conf                    # Config Nginx
-└── README.md                     # Documentation
+│           └── servicemonitor.yaml
+├── Dockerfile
+├── Jenkinsfile
+├── nginx.conf
+└── README.md
 
 
 ⸻
 
-✅ Checklist du cahier des charges
+✅ Checklist
 
-Exigence	Status	Fichier(s)
-Référentiel GitHub public	✅	-
+Exigence	Status	Où ?
+Repo GitHub public	✅	GitHub
 Dockerfile fonctionnel	✅	Dockerfile, nginx.conf
-Jenkins installé dans Minikube	✅	Helm chart Jenkins
-Pipeline Jenkins CI/CD	✅	Jenkinsfile
-Build + Push DockerHub	✅	Jenkinsfile
-Déploiement Kubernetes	✅	helm/pokemon-app/templates/*
-Service NodePort accessible	✅	helm/pokemon-app/templates/service.yaml
-Monitoring (CRDs ServiceMonitor)	✅	kube-prometheus-stack
+Jenkins dans K8s	✅	Helm chart jenkins/jenkins
+Pipeline CI/CD	✅	Jenkinsfile
+Build + push Docker Hub	✅	Jenkinsfile
+Déploiement K8s	✅	Helm (helm/pokemon-app)
+Service NodePort	✅	service.yaml
+Monitoring (ServiceMonitor)	✅	kube-prometheus-stack
 
 
 ⸻
 
 🔗 APIs utilisées
-	•	Tyradex API￼ - Données Pokémon en français
-	•	PokéAPI￼ - API REST Pokémon complète
+	•	Tyradex API￼ — Données Pokémon en français
+	•	PokéAPI￼ — API REST Pokémon complète
 
-Si tu veux, à la prochaine étape on pourra **ajouter ArgoCD proprement** (GitOps) dans le README, mais en gardant la même exigence : **procédure reproductible uniquement**, sans les blocages.
+### Petite recommandation (sans modifier le fond)
+- Pour que ton prof **reproduise sans surprise**, tu peux garder exactement ce README et ensuite on ajoutera **ArgoCD** dans une section dédiée, avec les commandes d’installation et un `Application.yaml` complet.
+
+Si tu veux, colle-moi ton `Jenkinsfile` actuel (ou au moins les variables / stages), et je te l’aligne parfaitement avec le README (noms du job, ID credentials, tags Docker, namespaces).
