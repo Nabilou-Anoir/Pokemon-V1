@@ -63,7 +63,7 @@ Votre VM Ubuntu doit avoir au minimum :
 - **RAM** : 4 Go (8 Go recommandé)
 - **CPU** : 2 cores
 - **Disque** : 20 Go
-- **Ubuntu** : 20.04 ou 22.04
+- **Ubuntu** : 20.04, 22.04 ou 24.04
 
 ---
 
@@ -287,40 +287,6 @@ helm uninstall pokemon-app
 
 ---
 
-## 🔄 ArgoCD (GitOps)
-
-### Installer ArgoCD
-
-```bash
-# Créer le namespace
-kubectl create namespace argocd
-
-# Installer ArgoCD
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-# Attendre que les pods soient prêts
-kubectl wait --for=condition=Ready pods --all -n argocd --timeout=300s
-
-# Récupérer le mot de passe admin
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
-echo  # Pour retour à la ligne
-```
-
-### Accéder à ArgoCD UI
-
-```bash
-# Option 1 : Port-forward
-kubectl port-forward svc/argocd-server -n argocd 8443:443
-
-# Accéder à https://localhost:8443
-# Username: admin
-# Password: (celui récupéré ci-dessus)
-```
-
-### Configurer l'Application ArgoCD
-
-⚠️ Modifiez `argocd/application.yaml` :
-```yaml
 source:
   repoURL: https://github.com/Nabilou-Anoir/Pokemon-V1.git
 ```
@@ -337,61 +303,94 @@ ArgoCD va maintenant :
 
 ---
 
-## 📊 Monitoring Prometheus + Grafana
+## 📊 Monitoring & Observabilité (Stack Complète)
 
-### Installer kube-prometheus-stack
+Le projet intègre une stack d'observabilité avancée basée sur le TP "Monitoring + Service Mesh Observability".
+
+### 🚀 Installation Automatique
+
+Un script est disponible pour installer toute la stack (Prometheus, Grafana, Istio, Kiali) et configurer le namespace :
 
 ```bash
-# Ajouter le repo Helm
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm repo update
-
-# Installer le stack de monitoring
-helm install prometheus prometheus-community/kube-prometheus-stack \
-  --namespace monitoring \
-  --create-namespace \
-  --set grafana.adminPassword=admin123
-
-# Attendre que les pods soient prêts
-kubectl wait --for=condition=Ready pods --all -n monitoring --timeout=300s
-
-# Vérifier l'installation
-kubectl get pods -n monitoring
+chmod +x scripts/setup-observability.sh
+./scripts/setup-observability.sh
 ```
 
-### Accéder à Grafana
+---
+
+### 🔍 Détails de l'installation (Manuel)
+
+Si vous n'utilisez pas le script, voici les composants installés :
+
+#### 1. Prometheus + Grafana (`kube-prometheus-stack`)
+Installé dans le namespace `monitoring`.
+- **Repo** : `prometheus-community`
+- **Composants** : Prometheus Operator, Node Exporter, Kube State Metrics, Grafana.
+
+#### 2. Service Mesh (`Istio`)
+Installé dans le namespace `istio-system`.
+- **Composants** : Istio Base, Istiod (Control Plane), Ingress Gateway.
+- **Injection** : Le namespace `pokemon-app` a le label `istio-injection=enabled`.
+
+#### 3. Observabilité Mesh (`Kiali`)
+Installé dans le namespace `istio-system`.
+- Visualisation du graph de trafic et des métriques Istio.
+
+---
+
+### 🌐 Accéder aux Dashboards
+
+#### 1. Grafana 📊
+Visualisation des métriques Cluster et Pods.
 
 ```bash
-# Port-forward Grafana
-kubectl port-forward svc/prometheus-grafana -n monitoring 3000:80
+# Récupérer le mot de passe admin
+kubectl get secret -n monitoring kube-prom-stack-grafana -o jsonpath="{.data.admin-password}" | base64 -d; echo
+
+# Port-forward
+kubectl port-forward -n monitoring svc/kube-prom-stack-grafana 3000:80
 ```
+> Accès : [http://localhost:3000](http://localhost:3000) (User: admin / Password: voir ci-dessus)
 
-Accéder à `http://localhost:3000` :
-- **Username** : admin
-- **Password** : admin123 (ou prom-operator si non spécifié)
-
-### Importer des Dashboards
-
-1. Dans Grafana : **+** > **Import**
-2. Entrer l'ID du dashboard :
-   - **6417** : Kubernetes Cluster Overview
-   - **13770** : Kubernetes Pods Dashboard
-   - **1860** : Node Exporter Full
-3. Sélectionner la datasource Prometheus
-4. **Import**
-
-### Accéder à Prometheus
+#### 2. Prometheus 📈
+Exploration des métriques brutes.
 
 ```bash
-kubectl port-forward svc/prometheus-kube-prometheus-prometheus -n monitoring 9090:9090
+kubectl port-forward -n monitoring svc/kube-prom-stack-kube-prome-prometheus 9090:9090
 ```
+> Accès : [http://localhost:9090](http://localhost:9090)
 
-Accéder à `http://localhost:9090`
-
-### Appliquer les règles d'alerte (Bonus)
+#### 3. Kiali 🕸️
+Observabilité du Service Mesh (Trafic, Erreurs, Latences du Pokemon App).
 
 ```bash
-kubectl apply -f monitoring/prometheus-rules.yaml
+kubectl port-forward -n istio-system svc/kiali 20001:20001
+```
+> Accès : [http://localhost:20001](http://localhost:20001)
+
+### 🧪 Tester l'Observabilité
+
+Une fois l'application Pokemon déployée (via Jenkins/ArgoCD) :
+
+1. Générer du trafic sur l'application :
+   ```bash
+   # Récupérer l'URL Minikube
+   minikube service pokemon-app-service -n pokemon-app --url
+   # Ou faire des curls
+   for i in {1..50}; do curl -s $(minikube service pokemon-app-service -n pokemon-app --url)/; done
+   ```
+
+2. Ouvrir **Kiali** :
+   - Graph > Sélectionner namespace `pokemon-app`.
+   - Vous verrez le trafic entrant vers vos pods Pokemon.
+
+3. Ouvrir **Grafana** :
+   - Dashboards > Kubernetes / Compute Resources / Pod.
+
+### ⚠️ Note Importante
+L'application doit être redéployée **APRÈS** l'ajout du label `istio-injection=enabled` sur le namespace pour que les sidecars Envoy soient injectés. Le script `setup-observability.sh` ajoute ce label. Si vos pods n'ont pas de sidecar, supprimez-les pour forcer leur recréation :
+```bash
+kubectl delete pods --all -n pokemon-app
 ```
 
 ---
