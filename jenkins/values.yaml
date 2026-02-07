@@ -1,0 +1,7 @@
+controller:
+  installPlugins:
+    - workflow-aggregator
+    - git
+    - docker-workflow
+    - kubernetes-cli
+    - credentials-binding
