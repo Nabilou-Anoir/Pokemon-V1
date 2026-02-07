@@ -126,29 +126,36 @@ curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 helm version
 ```
 
-### Étape 6 : Installer Jenkins
+### Étape 6 : Installer Jenkins sur Minikube (Helm)
+
+Nous allons installer Jenkins directement dans le cluster Kubernetes :
 
 ```bash
-# Installer Java
-sudo apt install -y openjdk-17-jdk
+# Ajouter le repo Helm Jenkins
+helm repo add jenkins https://charts.jenkins.io
+helm repo update
 
-# Ajouter le repo Jenkins
-curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
-echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/ | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+# Créer le namespace
+kubectl create namespace jenkins
 
 # Installer Jenkins
-sudo apt update
-sudo apt install -y jenkins
+helm install jenkins jenkins/jenkins \
+  --namespace jenkins \
+  --set controller.serviceType=NodePort
 
-# Démarrer Jenkins
-sudo systemctl start jenkins
-sudo systemctl enable jenkins
+# Récupérer le mot de passe Admin
+kubectl exec --namespace jenkins -it svc/jenkins -c jenkins -- /bin/cat /run/secrets/additional/chart-admin-password && echo
 
-# Récupérer le mot de passe initial
-sudo cat /var/lib/jenkins/secrets/initialAdminPassword
+# Donner les droits admin cluster à Jenkins (IMPORTANT pour le déploiement)
+kubectl create clusterrolebinding jenkins-admin-binding \
+  --clusterrole=cluster-admin \
+  --serviceaccount=jenkins:jenkins
 ```
 
-**Accéder à Jenkins** : `http://IP_DE_VOTRE_VM:8080`
+**Accéder à Jenkins** :
+```bash
+minikube service jenkins -n jenkins
+```
 
 ---
 
@@ -158,7 +165,7 @@ sudo cat /var/lib/jenkins/secrets/initialAdminPassword
 
 ```bash
 # Cloner le projet (si pas déjà fait)
-git clone https://github.com/VOTRE_USERNAME/Pokemon-V1.git
+git clone https://github.com/Nabilou-Anoir/Pokemon-V1.git
 cd Pokemon-V1
 
 # Construire l'image
@@ -182,8 +189,8 @@ docker stop pokemon-test && docker rm pokemon-test
 docker login
 
 # Tag et push
-docker tag pokemon-app:latest VOTRE_DOCKERHUB_USERNAME/pokemon-app:latest
-docker push VOTRE_DOCKERHUB_USERNAME/pokemon-app:latest
+docker tag pokemon-app:latest zouboupe/pokemon-app:latest
+docker push zouboupe/pokemon-app:latest
 ```
 
 ---
@@ -192,8 +199,8 @@ docker push VOTRE_DOCKERHUB_USERNAME/pokemon-app:latest
 
 ### Étape 1 : Configuration initiale de Jenkins
 
-1. Accéder à `http://IP_VM:8080`
-2. Entrer le mot de passe initial
+1. Lancer `minikube service jenkins -n jenkins` pour obtenir l'URL
+2. Entrer le mot de passe admin récupéré précédemment
 3. Installer les plugins suggérés
 4. Créer un utilisateur admin
 
@@ -209,17 +216,17 @@ Aller dans **Manage Jenkins** > **Plugins** > **Available plugins** :
 
 1. **Manage Jenkins** > **Credentials** > **System** > **Global credentials**
 2. **Add Credentials** :
-   - **Kind** : Username with password
-   - **Username** : Votre username Docker Hub
-   - **Password** : Votre mot de passe ou token Docker Hub
-   - **ID** : `dockerhub-credentials`
-   - **Description** : Docker Hub Credentials
+   - **Kind** : Secret text
+   - **Secret** : Votre Token d'accès Docker Hub (Settings > Security > New Access Token)
+   - **ID** : `dockerhub-token`
+   - **Description** : Docker Hub Token
 
 ### Étape 4 : Modifier le Jenkinsfile
 
 ⚠️ **IMPORTANT** : Ouvrez le fichier `Jenkinsfile` et remplacez :
 ```groovy
-DOCKER_HUB_USERNAME = 'your-dockerhub-username'  // ← Votre username Docker Hub
+DOCKER_HUB_USERNAME = 'zouboupe'
+
 ```
 
 ### Étape 5 : Créer le Pipeline
@@ -228,7 +235,7 @@ DOCKER_HUB_USERNAME = 'your-dockerhub-username'  // ← Votre username Docker Hu
 2. Configuration :
    - **Pipeline** > **Definition** : Pipeline script from SCM
    - **SCM** : Git
-   - **Repository URL** : `https://github.com/VOTRE_USERNAME/Pokemon-V1.git`
+   - **Repository URL** : `https://github.com/Nabilou-Anoir/Pokemon-V1.git`
    - **Branch** : `*/main`
    - **Script Path** : `Jenkinsfile`
 3. **Save** et **Build Now**
@@ -242,7 +249,7 @@ DOCKER_HUB_USERNAME = 'your-dockerhub-username'  // ← Votre username Docker Hu
 ⚠️ Avant de déployer, éditez `helm/pokemon-app/values.yaml` :
 ```yaml
 image:
-  repository: VOTRE_DOCKERHUB_USERNAME/pokemon-app  # ← Modifier ici
+  repository: zouboupe/pokemon-app
 ```
 
 ### Déployer avec Helm
@@ -315,7 +322,7 @@ kubectl port-forward svc/argocd-server -n argocd 8443:443
 ⚠️ Modifiez `argocd/application.yaml` :
 ```yaml
 source:
-  repoURL: https://github.com/VOTRE_USERNAME/Pokemon-V1.git  # ← Modifier
+  repoURL: https://github.com/Nabilou-Anoir/Pokemon-V1.git
 ```
 
 Puis appliquez :

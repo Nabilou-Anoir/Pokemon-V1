@@ -18,7 +18,7 @@ spec:
   # Source: Où ArgoCD doit récupérer les manifests
   source:
     # ⚠️ IMPORTANT: Remplacez par l'URL de votre repo GitHub
-    repoURL: https://github.com/your-username/Pokemon-V1.git
+    repoURL: https://github.com/Nabilou-Anoir/Pokemon-V1.git
     targetRevision: main
     path: helm/pokemon-app
     

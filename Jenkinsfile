@@ -3,7 +3,7 @@ pipeline {
     
     environment {
         // ⚠️ IMPORTANT: Remplacez 'your-dockerhub-username' par votre username Docker Hub
-        DOCKER_HUB_USERNAME = 'your-dockerhub-username'
+        DOCKER_HUB_USERNAME = 'zouboupe'
         DOCKER_IMAGE = "${DOCKER_HUB_USERNAME}/pokemon-app"
         DOCKER_TAG = "${BUILD_NUMBER}"
         // Credentials Docker Hub configurées dans Jenkins (ID: 'dockerhub-credentials')
@@ -40,16 +40,7 @@ pipeline {
             }
         }
 
-        // ============================================
-        // Stage 3: Linting du code
-        // ============================================
-        stage('Lint') {
-            steps {
-                echo "🔍 Vérification du code avec ESLint..."
-                sh 'npm run lint || true'
-                echo "✅ Vérification terminée"
-            }
-        }
+
 
         // ============================================
         // Stage 4: Construction de l'image Docker
@@ -69,12 +60,8 @@ pipeline {
         stage('Push to Docker Hub') {
             steps {
                 echo "📤 Publication de l'image sur Docker Hub..."
-                withCredentials([usernamePassword(
-                    credentialsId: "${DOCKER_CREDENTIALS_ID}",
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_TOKEN')]) {
+                    sh 'echo $DOCKER_TOKEN | docker login -u ${DOCKER_HUB_USERNAME} --password-stdin'
                     sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
                     sh "docker push ${DOCKER_IMAGE}:latest"
                 }

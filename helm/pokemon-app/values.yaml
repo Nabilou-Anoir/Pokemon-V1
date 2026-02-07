@@ -5,7 +5,7 @@
 # Configuration de l'image Docker
 image:
   # ⚠️ IMPORTANT: Remplacez par votre username Docker Hub
-  repository: your-dockerhub-username/pokemon-app
+  repository: zouboupe/pokemon-app
   tag: latest
   pullPolicy: Always
 
