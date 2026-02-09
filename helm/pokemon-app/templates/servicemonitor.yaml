@@ -1,5 +1,3 @@
-# ServiceMonitor pour Prometheus
-# Permet à Prometheus de scraper les métriques de l'application
 {{- if .Values.monitoring.serviceMonitor.enabled }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -8,7 +6,7 @@ metadata:
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "pokemon-app.labels" . | nindent 4 }}
-    release: prometheus  # Important pour que Prometheus détecte ce ServiceMonitor
+    release: prometheus
 spec:
   selector:
     matchLabels:
@@ -17,7 +15,7 @@ spec:
     matchNames:
       - {{ .Values.namespace }}
   endpoints:
-    - port: http
+    - port: metrics
       interval: {{ .Values.monitoring.serviceMonitor.interval }}
-      path: {{ .Values.monitoring.serviceMonitor.path }}
+      path: /metrics
 {{- end }}
