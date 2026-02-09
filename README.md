@@ -158,12 +158,106 @@ Donner les droits nécessaires à Jenkins
 
 Jenkins doit pouvoir faire kubectl / helm dans le cluster.
 
+<<<<<<< Updated upstream
 kubectl create clusterrolebinding jenkins-admin-binding \
   --clusterrole=cluster-admin \
   --serviceaccount=jenkins:jenkins
+=======
+# Note : La configuration des droits RBAC est détaillée à l'étape 8
+```
+>>>>>>> Stashed changes
 
 
+<<<<<<< Updated upstream
 ⸻
+=======
+### Étape 7 : Installer les plugins Jenkins (Via Helm)
+
+Avec Jenkins installé via le chart Helm `jenkins/jenkins`, l’installation des plugins se fait de façon déclarative via un fichier values (au lieu d’un assistant interactif).
+On ajoute ici les plugins minimum pour un pipeline CI/CD Docker + Kubernetes.
+
+✅ **Plugins requis**
+
+- `workflow-aggregator` (Pipeline)
+- `git` (SCM Git)
+- `docker-workflow` (Docker Pipeline)
+- `kubernetes-cli` (kubectl depuis Jenkins)
+- `credentials-binding` (gestion des credentials dans les pipelines)
+
+#### 1) Créer un fichier values pour Jenkins
+
+```bash
+cat > ~/jenkins-values.yaml <<'EOF'
+controller:
+  installPlugins:
+    - workflow-aggregator
+    - git
+    - docker-workflow
+    - kubernetes-cli
+    - credentials-binding
+EOF
+```
+
+#### 2) Appliquer la config à Jenkins (upgrade Helm)
+
+```bash
+helm upgrade jenkins jenkins/jenkins -n jenkins -f ~/jenkins-values.yaml
+```
+
+#### 3) Attendre que Jenkins redémarre
+
+```bash
+kubectl rollout status -n jenkins statefulset/jenkins
+kubectl get pods -n jenkins
+```
+
+#### 4) Vérifier que les plugins sont bien installés
+
+```bash
+kubectl exec -n jenkins jenkins-0 -c jenkins -- bash -lc '
+for p in docker-workflow kubernetes-cli; do
+  if [ -e "/var/jenkins_home/plugins/$p.jpi" ] || [ -d "/var/jenkins_home/plugins/$p" ]; then
+    echo "OK  - $p"
+  else
+    echo "MISS- $p"
+  fi
+done
+'
+```
+
+> **⚠️ Remarque** : Jenkins doit avoir un accès réseau sortant vers `updates.jenkins.io` pour télécharger les plugins. Si l’installation échoue, vérifiez DNS/proxy/réseau du cluster.
+
+### Étape 8 : Donner les droits Kubernetes à Jenkins (RBAC)
+
+Par défaut, Jenkins (installé via Helm dans le namespace `jenkins`) n’a pas forcément les droits nécessaires pour créer/modifier des ressources Kubernetes.
+Pour que le pipeline puisse déployer l’application dans le cluster Minikube, on donne au service account de Jenkins des droits `cluster-admin`.
+
+✅ **Créer le ClusterRoleBinding**
+
+```bash
+kubectl create clusterrolebinding jenkins-admin-binding \
+  --clusterrole=cluster-admin \
+  --serviceaccount=jenkins:jenkins
+```
+
+🔎 **Vérifier que c’est en place**
+
+```bash
+kubectl get clusterrolebinding | grep jenkins-admin-binding
+```
+Si vous obtenez une ligne avec `jenkins-admin-binding`, c’est bon.
+
+#### 🛠 Dépannage
+
+- Si vous voyez `Error from server (AlreadyExists)` : c’est OK, la règle existe déjà.
+- Si Jenkins a encore des erreurs "Forbidden" pendant le déploiement :
+  - Vérifiez que le namespace est bien `jenkins`
+  - Vérifiez le service account utilisé : `jenkins:jenkins`
+
+> **⚠️ Note sécurité** : `cluster-admin` est pratique pour un projet/TP (Minikube) mais trop permissif en production. En prod, on crée un rôle RBAC plus restrictif limité aux ressources nécessaires.
+
+---
+>>>>>>> Stashed changes
 
 🌐 Accéder à l’UI Jenkins
 
@@ -246,9 +340,20 @@ helm repo update
 
 kubectl create namespace monitoring || true
 
+<<<<<<< Updated upstream
 helm install kube-prom-stack prometheus-community/kube-prometheus-stack -n monitoring
 
 Vérifier la CRD :
+=======
+### Étape 2 : Vérification des plugins
+
+Si vous avez suivi l'**Étape 7**, les plugins sont déjà installés. 
+Sinon, allez dans **Manage Jenkins** > **Plugins** > **Available plugins** et installez :
+- Docker Pipeline
+- Git
+- Pipeline
+- Kubernetes CLI
+>>>>>>> Stashed changes
 
 kubectl get crd | grep servicemonitors.monitoring.coreos.com
 
