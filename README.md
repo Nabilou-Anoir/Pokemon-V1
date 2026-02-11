@@ -135,9 +135,6 @@ Pokemon-V1/
 ├── jenkins/
 │   └── values.yaml               # Plugins Jenkins (Helm values)
 │
-├── scripts/
-│   └── setup-observability.sh    # Script d'installation monitoring
-│
 ├── Dockerfile                    # Image Docker multi-stage
 ├── nginx.conf                    # Configuration Nginx (SPA + stub_status)
 ├── Jenkinsfile                   # Pipeline CI/CD Jenkins
@@ -523,13 +520,6 @@ helm upgrade kube-prom-stack prometheus-community/kube-prometheus-stack -n monit
 # Vérification
 kubectl -n monitoring get pods
 ```
-
-> **💡 Alternative** : Vous pouvez aussi utiliser le script automatisé fourni :
-> ```bash
-> chmod +x scripts/setup-observability.sh
-> ./scripts/setup-observability.sh
-> ```
-> Ce script installe Prometheus + Grafana, Istio, Kiali, et configure le namespace `pokemon-app`.
 
 ### 2) Vérification du ServiceMonitor
 
