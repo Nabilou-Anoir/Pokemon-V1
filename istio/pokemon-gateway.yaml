@@ -1,0 +1,32 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: pokemon-gateway
+  namespace: pokemon-app
+spec:
+  selector:
+    istio: ingress
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - pokemon.local
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: pokemon-vs
+  namespace: pokemon-app
+spec:
+  hosts:
+  - pokemon.local
+  gateways:
+  - pokemon-gateway
+  http:
+  - route:
+    - destination:
+        host: pokemon-app-service
+        port:
+          number: 80
