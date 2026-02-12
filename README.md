@@ -1,10 +1,10 @@
-# 🎮 Pokemon-V1 — Application Pokédex sur Kubernetes avec CI/CD
+#  Pokemon-V1 — Application Pokédex sur Kubernetes avec CI/CD
 
-## 📖 Description du projet
+##  Description du projet
 
-**Pokemon-V1** est une application web **Pokédex** développée en **React** (avec **Vite**), permettant de parcourir les Pokémon par génération, de rechercher des Pokémon, et de consulter leurs détails.
+**Pokemon-V1 est une application web Pokédex développée en React, permettant de parcourir les Pokémon par génération, de rechercher des Pokémon, et de consulter leurs détails.
 
-L'application est conteneurisée avec **Docker** (servie par **Nginx**), déployée sur **Kubernetes** via **Helm** et **Argo CD** (GitOps), avec une pipeline CI/CD automatisée via **Jenkins**. Le monitoring est assuré par **Prometheus + Grafana** (kube-prometheus-stack).
+L'application est conteneurisée avec **Docker** (servie par **Nginx**), déployée sur Kubernetes via Helm et Argo CD (GitOps), avec une pipeline CI/CD automatisée via Jenkins. Le monitoring est assuré par Prometheus + Grafana(kube-prometheus-stack).
 
 ### Stack technique
 
@@ -22,7 +22,7 @@ L'application est conteneurisée avec **Docker** (servie par **Nginx**), déploy
 
 ### Architecture choisie : Monolithique
 
-L'application suit une architecture **monolithique** : un seul conteneur Nginx sert le frontend React compilé, accompagné d'un sidecar `nginx-prometheus-exporter` pour exposer les métriques.
+L'application suit une architecture monolithique : un seul conteneur Nginx sert le frontend React compilé, accompagné d'un sidecar `nginx-prometheus-exporter` pour exposer les métriques.
 
 ### Diagramme d'architecture
 
@@ -32,7 +32,7 @@ L'application suit une architecture **monolithique** : un seul conteneur Nginx s
 │                  https://github.com/Nabilou-Anoir/Pokemon-V1                │
 └──────────┬──────────────────────────────────────────────────┬───────────────┘
            │                                                  │
-           │ git clone / webhook                              │ sync (GitOps)
+           │ git clone                                        │ sync (GitOps)
            ▼                                                  ▼
 ┌─────────────────────┐                            ┌─────────────────────┐
 │      Jenkins        │                            │      Argo CD        │
@@ -86,19 +86,19 @@ L'application suit une architecture **monolithique** : un seul conteneur Nginx s
                             │   Métriques Nginx (connexions,       │
                             │   requêtes, etc.)                    │
                             │                                      │
-                            │   Alertes : PokemonAppDown,          │
-                            │   HighPodRestarts, HighCPU           │
+                            │                                      │
+                            │                                      │
                             └──────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Structure du projet
+##  Structure du projet
 
 ```
 Pokemon-V1/
 ├── src/                          # Code source React
-│   ├── App.jsx                   # Composant principal (routing)
+│   ├── App.jsx                   # Composant principal 
 │   ├── main.jsx                  # Point d'entrée React
 │   ├── index.css                 # Styles globaux
 │   ├── assets/                   # Images et ressources
@@ -151,7 +151,7 @@ Pokemon-V1/
 
 ---
 
-## 📋 Table des matières
+##  Table des matières
 
 - [Prérequis](#-prérequis)
 - [Installation de l'environnement](#️-installation-de-lenvironnement)
@@ -165,14 +165,14 @@ Pokemon-V1/
 
 ---
 
-## 🔧 Prérequis
+##  Prérequis
 
 - Connexion Internet
 - Compte [Docker Hub](https://hub.docker.com) (gratuit)
 
 ---
 
-## 🏗️ Installation de l'environnement
+##  Installation de l'environnement
 
 ### 1) Mise à jour système
 
@@ -218,7 +218,7 @@ minikube start --driver=docker --memory=4096 --cpus=2
 minikube status
 ```
 
-> **💡 Astuce** : Si vous avez 8 Go de RAM ou plus, augmentez la mémoire :
+> ** Astuce** : Si vous avez 8 Go de RAM ou plus, augmentez la mémoire :
 > ```bash
 > minikube start --driver=docker --memory=6144 --cpus=2
 > ```
@@ -248,7 +248,7 @@ helm version
 
 ---
 
-## 🔐 Préparation Docker Hub
+##  Préparation Docker Hub
 
 Le pipeline Jenkins publie les images Docker sur Docker Hub. Vous devez créer un token d'accès :
 
@@ -261,7 +261,7 @@ Le pipeline Jenkins publie les images Docker sur Docker Hub. Vous devez créer u
 
 ---
 
-## 🧰 Installation de Jenkins
+##  Installation de Jenkins
 
 ### 1) Installation via Helm
 
@@ -280,7 +280,7 @@ helm install jenkins jenkins/jenkins \
   -f jenkins/values.yaml
 ```
 
-> **📝 Note** : Le fichier `jenkins/values.yaml` préinstalle automatiquement les plugins suivants :
+> ** Note** : Le fichier `jenkins/values.yaml` préinstalle automatiquement les plugins suivants :
 > - `workflow-aggregator` (Pipeline)
 > - `git`
 > - `docker-workflow` (Docker Pipeline)
@@ -341,7 +341,7 @@ Les plugins sont normalement installés automatiquement via `jenkins/values.yaml
 
 ---
 
-## ✅ Configuration du Pipeline CI/CD
+##  Configuration du Pipeline CI/CD
 
 ### A) Cloner le projet
 
@@ -370,7 +370,7 @@ helm install kube-prom-stack prometheus-community/kube-prometheus-stack -n monit
 kubectl get crd | grep servicemonitors.monitoring.coreos.com
 ```
 
-**✅ Résultat attendu :** Une ligne contenant `servicemonitors.monitoring.coreos.com`
+** Résultat attendu :** Une ligne contenant `servicemonitors.monitoring.coreos.com`
 
 ### C) Création du job Pipeline dans Jenkins
 
@@ -401,20 +401,20 @@ kubectl get crd | grep servicemonitors.monitoring.coreos.com
 | **5. Deploy with Helm** | `helm upgrade --install pokemon-app ./helm/pokemon-app` dans le namespace `pokemon-app` |
 | **6. Verify Deployment** | `kubectl rollout status` + listing des pods et services |
 
-> **📝 Note** : Le pipeline utilise un pod Kubernetes avec 4 containers spécialisés (`node`, `docker`, `helm`, `kubectl`) et poll le SCM toutes les 5 minutes (`*/5 * * * *`).
+> ** Note** : Le pipeline utilise un pod Kubernetes avec 4 containers spécialisés (`node`, `docker`, `helm`, `kubectl`) et poll le SCM toutes les 5 minutes (`*/5 * * * *`).
 
-**✅ Build réussi :** Toutes les étapes doivent être vertes
+** Build réussi :** Toutes les étapes doivent être vertes
 
 ---
 
-## 🚀 Déploiement GitOps avec Argo CD
+##  Déploiement GitOps avec Argo CD
 
 ### Prérequis
 
 - Cluster Kubernetes fonctionnel
 - Le chart Helm doit être dans le dépôt : `helm/pokemon-app/`
 
-> **⚠️ Important** : Argo CD déploie depuis l'URL Git, pas depuis le dossier local cloné.
+> ** Important** : Argo CD déploie depuis l'URL Git, pas depuis le dossier local cloné.
 
 ### 1) Installation d'Argo CD
 
@@ -486,7 +486,7 @@ kubectl -n argocd get application pokemon-app -o wide
 kubectl -n pokemon-app get all
 ```
 
-**✅ Résultats attendus :**
+** Résultats attendus :**
 - **SYNC STATUS** : `Synced`
 - **HEALTH STATUS** : `Healthy`
 
@@ -531,7 +531,7 @@ kubectl -n pokemon-app get servicemonitor
 kubectl -n pokemon-app get svc pokemon-app-service -o wide
 ```
 
-**✅ Le service expose 2 ports :**
+** Le service expose 2 ports :**
 - Port **80** → application web (Nginx + React)
 - Port **9113** → métriques nginx-prometheus-exporter (sidecar)
 
@@ -548,7 +548,7 @@ kubectl -n pokemon-app port-forward svc/pokemon-app-service 9113:9113
 curl -s http://localhost:9113/metrics | head -n 30
 ```
 
-**✅ Résultat attendu :** Des métriques Prometheus (lignes commençant par `nginx_`, `go_`, `promhttp_`, etc.)
+** Résultat attendu :** Des métriques Prometheus (lignes commençant par `nginx_`, `go_`, `promhttp_`, etc.)
 
 ### 4) Accès à Prometheus
 
@@ -613,7 +613,7 @@ nginx_http_requests_total
 rate(promhttp_metric_handler_requests_total[5m])
 ```
 
-### 7) Alertes Prometheus (Bonus)
+### 7) Alertes Prometheus 
 
 Le fichier `monitoring/prometheus-rules.yaml` définit **3 règles d'alertes** :
 
@@ -648,7 +648,7 @@ kubectl -n pokemon-app get prometheusrule
 
 ---
 
-## 🌐 Accès à l'application
+##  Accès à l'application
 
 ### 1) Vérification de l'état
 
@@ -674,11 +674,11 @@ minikube service pokemon-app-service -n pokemon-app --url
 curl -I $(minikube service pokemon-app-service -n pokemon-app --url)
 ```
 
-**✅ Résultat attendu :** `HTTP/1.1 200 OK`
+** Résultat attendu :** `HTTP/1.1 200 OK`
 
 ---
 
-## 🔧 Dépannage
+##  Dépannage
 
 ### Jenkins ne répond plus après redémarrage
 
@@ -742,10 +742,9 @@ minikube logs
 
 ---
 
-## 📝 Notes importantes
+##  Notes importantes
 
-- **Ressources système** : Minikube nécessite au moins 4 Go de RAM. Pour une expérience optimale, utilisez 6-8 Go.
-- **Docker Hub** : L'image est publiée sous `zouboupe/pokemon-app`. Assurez-vous que votre token a les permissions nécessaires (Read, Write, Delete).
+- **Docker Hub** : L'image est publiée sous `zouboupe/pokemon-app`. 
 - **Namespaces** :
   - `pokemon-app` → Application
   - `jenkins` → Jenkins
